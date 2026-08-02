@@ -85,6 +85,7 @@ select option { background: var(--navy-mid); }
   position: relative;
   background: var(--navy-deep);
   overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ═══════════════════════════════════════════════
@@ -94,7 +95,7 @@ select option { background: var(--navy-mid); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px 10px;
+  padding: calc(14px + env(safe-area-inset-top)) 18px 10px;
   background: var(--navy-deepest);
   border-bottom: 1px solid var(--navy-border);
   flex-shrink: 0;
@@ -168,7 +169,7 @@ select option { background: var(--navy-mid); }
 }
 #sidebar.open { transform: translateX(0); }
 #sidebar-header {
-  padding: 52px 24px 20px;
+  padding: calc(52px + env(safe-area-inset-top)) 24px 20px;
   border-bottom: 1px solid var(--navy-border);
   background: linear-gradient(160deg, var(--navy-mid), var(--navy-deepest));
 }
@@ -948,39 +949,6 @@ select option { background: var(--navy-mid); }
 }
 
 /* ═══════════════════════════════════════════════
-   BACKUP PAGE
-═══════════════════════════════════════════════ */
-.backup-card {
-  background: var(--navy-surface);
-  border: 1px solid var(--navy-border);
-  border-radius: var(--radius-card);
-  padding: 18px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.backup-card h3 { font-family: var(--font-display); font-size: 14px; color: var(--gold-warm); letter-spacing: 0.06em; }
-.backup-card p { font-size: 13px; color: var(--text-sec); line-height: 1.5; }
-.backup-btn {
-  width: 100%; padding: 13px;
-  border-radius: var(--radius-btn);
-  font-family: var(--font-display);
-  font-size: 14px; letter-spacing: 0.06em;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all var(--transition);
-}
-.backup-btn.export {
-  background: var(--gold-glow2);
-  border: 1px solid var(--gold-muted);
-  color: var(--gold-warm);
-}
-.backup-btn.import {
-  background: var(--navy-light);
-  border: 1px solid var(--navy-border);
-  color: var(--text-sec);
-}
-.backup-btn:active { opacity: 0.8; }
-#import-file { display: none; }
-
-/* ═══════════════════════════════════════════════
    EMPTY STATE
 ═══════════════════════════════════════════════ */
 .empty-state {
@@ -1101,32 +1069,6 @@ select option { background: var(--navy-mid); }
       </div>
       <div id="manage-list"></div>
     </div>
-
-    <!-- BACKUP PAGE -->
-    <div class="page" id="page-backup">
-      <div class="backup-card" style="border-color:var(--gold-muted);background:linear-gradient(135deg,var(--gold-glow2),transparent);">
-        <h3>How Data is Saved</h3>
-        <p>Your azkar, counts, history and stats are <strong style="color:var(--gold-warm)">automatically saved to your browser's local storage</strong> after every tap. No internet needed. Data persists between sessions on the same browser/device.</p>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">⚠ Clearing browser data or switching browsers will erase it. Use JSON backup below to protect your data.</p>
-      </div>
-      <div class="backup-card">
-        <h3>Export Backup</h3>
-        <p>Download a full JSON snapshot of all your azkar, counts, history, and statistics.</p>
-        <button class="backup-btn export" id="export-btn">⬇ Download JSON Backup</button>
-      </div>
-      <div class="backup-card">
-        <h3>Import / Restore</h3>
-        <p>Restore from a previously exported JSON backup file. This will overwrite your current data.</p>
-        <button class="backup-btn import" id="import-btn">⬆ Import JSON File</button>
-        <input type="file" id="import-file" accept=".json"/>
-      </div>
-      <div class="backup-card">
-        <h3>Auto-Backup</h3>
-        <p id="last-backup-time">Last backup: Never</p>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">A JSON backup is automatically created at each midnight rollover. Download it here.</p>
-        <button class="backup-btn export" id="download-auto-btn">⬇ Download Latest Auto-Backup</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -1154,10 +1096,6 @@ select option { background: var(--navy-mid); }
     <div class="nav-item" data-page="manage">
       <span class="nav-icon">⚙️</span>
       <span class="nav-label">Manage Azkar</span>
-    </div>
-    <div class="nav-item" data-page="backup">
-      <span class="nav-icon">💾</span>
-      <span class="nav-label">Backup & Restore</span>
     </div>
     <div class="nav-divider"></div>
     <div class="nav-item" id="review-btn-nav">
@@ -1254,16 +1192,11 @@ function getDefaultData() {
   return {
     categories: [],
     milestones: [],
-    stats: { lifetimeCounts: 0 },
-    lastAutoBackup: null
+    stats: { lifetimeCounts: 0 }
   };
 }
 
 let state = loadData();
-
-function doAutoBackup() {
-  state.lastAutoBackup = { date: TODAY(), data: JSON.stringify(state) };
-}
 
 function isCategoryComplete(cat) {
   return cat.azkar.length > 0 && cat.azkar.every(z => z.count >= z.intendedCount);
@@ -1298,7 +1231,6 @@ function renderPage(page) {
   else if (page === 'goals') renderGoals();
   else if (page === 'insights') renderInsights();
   else if (page === 'manage') renderManage();
-  else if (page === 'backup') renderBackup();
   updateTopBar();
 }
 
@@ -2287,55 +2219,6 @@ document.getElementById('close-review').addEventListener('click', () => {
 });
 
 /* ═══════════════════════════════════════════════════════
-   BACKUP
-═══════════════════════════════════════════════════════ */
-function renderBackup() {
-  const lb = state.lastAutoBackup;
-  document.getElementById('last-backup-time').textContent =
-    lb ? `Last auto-backup: ${formatDate(lb.date)}` : 'Last backup: Never';
-}
-
-document.getElementById('export-btn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `tasbih-backup-${TODAY()}.json`;
-  a.click(); URL.revokeObjectURL(url);
-  showToast('Backup downloaded');
-  doAutoBackup(); saveData();
-});
-
-document.getElementById('download-auto-btn').addEventListener('click', () => {
-  if (!state.lastAutoBackup) { showToast('No auto-backup yet'); return; }
-  const blob = new Blob([state.lastAutoBackup.data], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `tasbih-auto-${state.lastAutoBackup.date}.json`;
-  a.click(); URL.revokeObjectURL(url);
-});
-
-document.getElementById('import-btn').addEventListener('click', () => {
-  document.getElementById('import-file').click();
-});
-
-document.getElementById('import-file').addEventListener('change', e => {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const imported = JSON.parse(ev.target.result);
-      if (!imported.categories) throw new Error('Invalid format');
-      Object.assign(state, imported);
-      saveData();
-      renderPage(currentPage);
-      showToast('Data restored successfully');
-    } catch(err) { showToast('Invalid backup file'); }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
-});
-
-/* ═══════════════════════════════════════════════════════
    BULK RESET
 ═══════════════════════════════════════════════════════ */
 document.getElementById('bulk-reset-btn').addEventListener('click', () => {
@@ -2419,6 +2302,18 @@ function formatDate(iso) {
 getMilestones();
 updateTopBar();
 renderHome();
+
+// On Android, make sure the status bar area is reserved (not overlaid) and
+// styled to match the app. No-ops safely if not running as a native app.
+try {
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    var EdgeToEdge = window.Capacitor.Plugins && window.Capacitor.Plugins.EdgeToEdge;
+    if (EdgeToEdge) {
+      if (EdgeToEdge.setBackgroundColor) EdgeToEdge.setBackgroundColor({ color: '#080c14' }).catch(function(){});
+      if (EdgeToEdge.setStatusBarAppearance) EdgeToEdge.setStatusBarAppearance({ light: true }).catch(function(){});
+    }
+  }
+} catch(e) {}
 </script>
 
 <!-- ═══ WORKSPACE BRIDGE ═══════════════════════════════════ -->
