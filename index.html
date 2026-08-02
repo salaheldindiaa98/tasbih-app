@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Tasbih — Zikr Counter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300&family=Amiri:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════
+   ROOT TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --navy-deepest: #080c14;
+  --navy-deep:    #0d1422;
+  --navy-mid:     #111c30;
+  --navy-light:   #1a2640;
+  --navy-surface: #1f2e48;
+  --navy-border:  #2a3d5c;
+  --gold-bright:  #f5c842;
+  --gold-warm:    #e8b830;
+  --gold-soft:    #c9952a;
+  --gold-muted:   #8a6520;
+  --gold-glow:    rgba(245,200,66,0.18);
+  --gold-glow2:   rgba(245,200,66,0.08);
+  --green-done:   #2ecc71;
+  --green-glow:   rgba(46,204,113,0.2);
+  --text-primary: #e8dcc8;
+  --text-sec:     #9baabb;
+  --text-muted:   #5a6b80;
+  --white:        #ffffff;
+  --danger:       #e05050;
+  --radius-card:  16px;
+  --radius-btn:   10px;
+  --shadow-card:  0 4px 24px rgba(0,0,0,0.45);
+  --shadow-gold:  0 0 24px rgba(245,200,66,0.25);
+  --transition:   0.2s cubic-bezier(0.4,0,0.2,1);
+  --font-display: 'Cinzel', serif;
+  --font-body:    'Crimson Pro', serif;
+  --font-arabic:  'Amiri', serif;
+}
+
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  background: var(--navy-deepest);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+button { border: none; background: none; cursor: pointer; font-family: inherit; color: inherit; }
+input, textarea, select {
+  font-family: var(--font-body);
+  background: var(--navy-light);
+  border: 1px solid var(--navy-border);
+  color: var(--text-primary);
+  border-radius: var(--radius-btn);
+  padding: 10px 14px;
+  font-size: 15px;
+  width: 100%;
+  outline: none;
+  transition: border-color var(--transition);
+}
+input:focus, textarea:focus, select:focus { border-color: var(--gold-soft); }
+select option { background: var(--navy-mid); }
+
+/* ═══════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════ */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  background: var(--navy-deep);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════════ */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  background: var(--navy-deepest);
+  border-bottom: 1px solid var(--navy-border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+#topbar-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--gold-warm);
+  letter-spacing: 0.08em;
+}
+#menu-btn {
+  width: 38px; height: 38px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 5px;
+  border-radius: 8px;
+  transition: background var(--transition);
+}
+#menu-btn:active { background: var(--navy-light); }
+#menu-btn span {
+  display: block; width: 20px; height: 2px;
+  background: var(--gold-warm); border-radius: 2px;
+  transition: var(--transition);
+}
+/* ═══════════════════════════════════════════════
+   PAGE CONTAINER
+═══════════════════════════════════════════════ */
+#pages {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.page {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.page::-webkit-scrollbar { display: none; }
+.page.active { display: flex; }
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════ */
+#sidebar-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+#sidebar-overlay.open { opacity: 1; pointer-events: all; }
+#sidebar {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 280px;
+  background: var(--navy-deepest);
+  border-right: 1px solid var(--navy-border);
+  z-index: 101;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+#sidebar.open { transform: translateX(0); }
+#sidebar-header {
+  padding: 52px 24px 20px;
+  border-bottom: 1px solid var(--navy-border);
+  background: linear-gradient(160deg, var(--navy-mid), var(--navy-deepest));
+}
+#sidebar-header h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--gold-warm);
+  letter-spacing: 0.1em;
+}
+#sidebar-header p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+#sidebar-nav {
+  flex: 1;
+  padding: 16px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  overflow-y: auto;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-btn);
+  font-size: 15px;
+  color: var(--text-sec);
+  transition: all var(--transition);
+  cursor: pointer;
+}
+.nav-item:hover, .nav-item.active { background: var(--navy-light); color: var(--gold-warm); }
+.nav-item .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+.nav-item .nav-label { font-family: var(--font-display); font-size: 13px; letter-spacing: 0.05em; }
+.nav-divider { height: 1px; background: var(--navy-border); margin: 8px 4px; }
+#sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--navy-border);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════
+   HOME PAGE — CATEGORIES
+═══════════════════════════════════════════════ */
+.daily-banner {
+  background: linear-gradient(135deg, var(--navy-surface), var(--navy-light));
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  padding: 16px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.daily-banner-left h3 { font-family: var(--font-display); font-size: 14px; color: var(--gold-warm); letter-spacing: 0.06em; }
+.daily-banner-left p { font-size: 13px; color: var(--text-sec); margin-top: 2px; }
+.daily-progress-ring { position: relative; width: 54px; height: 54px; flex-shrink: 0; }
+.daily-progress-ring svg { transform: rotate(-90deg); }
+.daily-progress-ring .ring-bg { fill: none; stroke: var(--navy-border); stroke-width: 4; }
+.daily-progress-ring .ring-fill { fill: none; stroke: var(--gold-warm); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.6s; }
+.daily-progress-ring .ring-text {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: var(--gold-warm);
+  font-family: var(--font-display);
+}
+
+.section-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 0 2px;
+}
+
+.category-card {
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: var(--shadow-card);
+}
+.category-card:active { transform: scale(0.985); }
+.category-card.completed { border-color: var(--green-done); }
+.category-card.completed .cat-header { background: linear-gradient(135deg, rgba(46,204,113,0.1), transparent); }
+.cat-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+}
+.cat-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.cat-info { flex: 1; min-width: 0; }
+.cat-info h3 { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.04em; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-info p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.cat-badge {
+  font-size: 11px; padding: 3px 8px;
+  border-radius: 20px; font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+.cat-badge.done { background: var(--green-glow); color: var(--green-done); border: 1px solid var(--green-done); }
+.cat-badge.partial { background: var(--gold-glow2); color: var(--gold-warm); border: 1px solid var(--gold-muted); }
+.cat-badge.empty { background: var(--navy-light); color: var(--text-muted); border: 1px solid var(--navy-border); }
+.cat-progress-bar {
+  height: 3px;
+  background: var(--navy-border);
+  margin: 0 16px 14px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cat-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold-bright));
+}
+.cat-progress-fill.done { background: linear-gradient(90deg, #1f9d55, var(--green-done)); }
+
+/* ═══════════════════════════════════════════════
+   ZIKR LIST PAGE
+═══════════════════════════════════════════════ */
+.zikr-page-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 4px 0 8px;
+}
+.back-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  font-size: 18px; color: var(--gold-warm);
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.back-btn:active { background: var(--navy-light); }
+.zikr-page-title { font-family: var(--font-display); font-size: 16px; color: var(--gold-warm); letter-spacing: 0.06em; }
+
+.zikr-card {
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4,0,0.2,1);
+  position: relative;
+}
+.zikr-card:active { transform: scale(0.97); }
+.zikr-card.completed-intended {
+  border-color: var(--green-done);
+  background: linear-gradient(160deg, rgba(46,204,113,0.07) 0%, var(--navy-surface) 60%);
+}
+.zikr-card.completed-goal {
+  border-color: var(--gold-warm);
+  background: linear-gradient(160deg, rgba(245,200,66,0.08) 0%, var(--navy-surface) 60%);
+  box-shadow: var(--shadow-gold);
+}
+.zikr-tap-area {
+  padding: 16px 16px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.zikr-arabic {
+  font-family: var(--font-arabic);
+  font-size: 22px;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1.4;
+  direction: rtl;
+}
+.zikr-transliteration {
+  font-size: 12px; color: var(--text-muted);
+  text-align: center; font-style: italic;
+}
+.zikr-counter-row {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  margin: 4px 0;
+}
+.zikr-count-display {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--gold-bright);
+  line-height: 1;
+  transition: transform 0.1s cubic-bezier(0.4,0,0.2,1);
+  min-width: 80px;
+  text-align: center;
+}
+.zikr-count-display.pulse {
+  animation: countPulse 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes countPulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.18); color: var(--gold-bright); }
+  100% { transform: scale(1); }
+}
+.zikr-targets {
+  display: flex; justify-content: center; gap: 16px;
+  font-size: 12px; color: var(--text-muted);
+}
+.zikr-target { display: flex; align-items: center; gap: 4px; }
+.zikr-target .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+.zikr-target .dot.intended { background: var(--green-done); }
+.zikr-target .dot.goal { background: var(--gold-bright); }
+.zikr-progress-bar {
+  height: 4px;
+  background: var(--navy-border);
+  border-radius: 2px;
+  margin: 0 4px 4px;
+  overflow: hidden;
+}
+.zikr-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+  background: linear-gradient(90deg, var(--gold-soft), var(--gold-bright));
+}
+.zikr-progress-fill.intended-done { background: linear-gradient(90deg, #1f9d55, var(--green-done)); }
+.zikr-progress-fill.goal-done { background: linear-gradient(90deg, var(--gold-muted), var(--gold-bright)); box-shadow: 0 0 8px var(--gold-glow); }
+
+.zikr-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px 12px;
+  border-top: 1px solid var(--navy-border);
+  background: rgba(0,0,0,0.15);
+}
+.zikr-action-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--navy-light);
+  border: 1px solid var(--navy-border);
+  font-size: 16px;
+  color: var(--text-sec);
+  transition: all var(--transition);
+}
+.zikr-action-btn:active { background: var(--navy-border); }
+.zikr-action-btn.decrement:active { color: var(--gold-warm); }
+.zikr-action-btn.reset:active { color: var(--danger); }
+.zikr-status-text {
+  font-size: 11px;
+  font-family: var(--font-display);
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.zikr-status-text.intended-done { color: var(--green-done); }
+.zikr-status-text.goal-done { color: var(--gold-warm); }
+
+/* Golden shimmer for goal completion */
+.zikr-card.completed-goal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(245,200,66,0.08) 50%, transparent 60%);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ═══════════════════════════════════════════════
+   CELEBRATION OVERLAY
+═══════════════════════════════════════════════ */
+#celebration-overlay {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+}
+#celebration-overlay.show { opacity: 1; }
+#celebration-badge {
+  background: var(--navy-mid);
+  border-radius: 20px;
+  padding: 24px 32px;
+  text-align: center;
+  border: 2px solid var(--gold-warm);
+  box-shadow: 0 0 60px rgba(245,200,66,0.35), var(--shadow-card);
+  transform: scale(0.7) translateY(30px);
+  transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+#celebration-overlay.show #celebration-badge {
+  transform: scale(1) translateY(0);
+}
+#celebration-badge .cel-arabic {
+  font-family: var(--font-arabic);
+  font-size: 28px;
+  color: var(--gold-bright);
+  direction: rtl;
+  display: block;
+  margin-bottom: 6px;
+}
+#celebration-badge .cel-sub {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-sec);
+  text-transform: uppercase;
+}
+#celebration-badge.goal-level {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 80px rgba(245,200,66,0.5), var(--shadow-card);
+  background: linear-gradient(160deg, var(--navy-light), var(--navy-mid));
+}
+#celebration-badge.goal-level .cel-arabic { font-size: 32px; }
+
+/* Particles */
+#particle-container {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 199;
+  overflow: hidden;
+}
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFall linear forwards;
+}
+@keyframes particleFall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(80vh) rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════
+   GOALS PAGE
+═══════════════════════════════════════════════ */
+.goals-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.stat-card {
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat-card .stat-val {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--gold-warm);
+  line-height: 1;
+}
+.stat-card .stat-lbl {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.stat-card.wide { grid-column: 1 / -1; }
+
+.milestone-list { display: flex; flex-direction: column; gap: 8px; }
+.milestone-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-btn);
+}
+.milestone-item.earned { border-color: var(--gold-muted); background: var(--gold-glow2); }
+.milestone-icon { font-size: 22px; width: 28px; text-align: center; }
+.milestone-info h4 { font-size: 14px; color: var(--text-primary); }
+.milestone-info p { font-size: 12px; color: var(--text-muted); }
+.milestone-item.earned .milestone-info h4 { color: var(--gold-warm); }
+
+/* ═══════════════════════════════════════════════
+   MANAGE PAGE
+═══════════════════════════════════════════════ */
+.manage-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 2px;
+}
+.manage-section-header h3 { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.06em; color: var(--gold-warm); }
+.add-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: var(--gold-glow2);
+  border: 1px solid var(--gold-muted);
+  border-radius: var(--radius-btn);
+  font-size: 13px;
+  color: var(--gold-warm);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  transition: all var(--transition);
+}
+.add-btn:active { background: var(--gold-glow); }
+
+.manage-category-card {
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.manage-cat-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--navy-mid);
+  border-bottom: 1px solid var(--navy-border);
+}
+.manage-cat-header .cat-icon-sm { font-size: 18px; }
+.manage-cat-header h4 { flex: 1; font-family: var(--font-display); font-size: 13px; color: var(--gold-warm); letter-spacing: 0.05em; }
+.icon-btn {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+.icon-btn:active { background: var(--navy-border); }
+.icon-btn.edit:active { color: var(--gold-warm); }
+.icon-btn.delete:active { color: var(--danger); }
+
+.manage-zikr-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--navy-border);
+  transition: background var(--transition), opacity var(--transition);
+}
+.manage-zikr-item:last-child { border-bottom: none; }
+.manage-zikr-item.drag-over { background: var(--navy-light); }
+.manage-zikr-item.dragging  { opacity: 0.35; }
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 4px 2px;
+  flex-shrink: 0;
+  user-select: none;
+  line-height: 1;
+  touch-action: none;
+}
+.drag-handle:active { cursor: grabbing; }
+.manage-zikr-info { flex: 1; min-width: 0; }
+.manage-zikr-info .arabic-sm { font-family: var(--font-arabic); font-size: 16px; direction: rtl; }
+.manage-zikr-info .targets-sm { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.manage-zikr-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+.bulk-reset-btn {
+  width: 100%;
+  padding: 14px;
+  background: rgba(224,80,80,0.1);
+  border: 1px solid rgba(224,80,80,0.3);
+  border-radius: var(--radius-btn);
+  color: var(--danger);
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  transition: all var(--transition);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.bulk-reset-btn:active { background: rgba(224,80,80,0.2); }
+
+/* ═══════════════════════════════════════════════
+   FOCUS MODE
+═══════════════════════════════════════════════ */
+#focus-overlay {
+  position: fixed; inset: 0;
+  background: var(--navy-deepest);
+  z-index: 150;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#focus-overlay.open { display: flex; }
+#focus-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  font-size: 18px; color: var(--text-sec);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  z-index: 2;
+}
+#focus-close:active { background: var(--navy-light); }
+#focus-nav-left, #focus-nav-right {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  font-size: 18px; color: var(--text-sec);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  z-index: 2;
+}
+#focus-nav-left { left: 10px; }
+#focus-nav-right { right: 10px; }
+#focus-nav-left:active, #focus-nav-right:active { background: var(--navy-light); color: var(--gold-warm); }
+
+/* Content column — fills available space, never overflows */
+#focus-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 64px 60px 24px;   /* top pad clears the close btn */
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+#focus-category {
+  font-size: 10px; letter-spacing: 0.14em;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  flex-shrink: 0;
+  text-align: center;
+}
+#focus-arabic {
+  font-family: var(--font-arabic);
+  /* clamp: won't exceed 34px, shrinks to 18px on small/long text */
+  font-size: clamp(18px, 5vw, 34px);
+  text-align: center;
+  direction: rtl;
+  line-height: 1.45;
+  color: var(--text-primary);
+  /* let the text wrap and shrink rather than overflow */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+  /* shrink if parent is tight */
+  flex-shrink: 1;
+  min-height: 0;
+}
+#focus-count {
+  font-family: var(--font-display);
+  font-size: clamp(52px, 14vw, 80px);
+  font-weight: 700;
+  color: var(--gold-bright);
+  line-height: 1;
+  flex-shrink: 0;
+  transition: transform 0.1s cubic-bezier(0.4,0,0.2,1);
+}
+#focus-count.pulse { animation: countPulse 0.2s cubic-bezier(0.4,0,0.2,1); }
+#focus-targets { display: flex; gap: 20px; font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
+#focus-actions { display: none; }
+.focus-action {
+  position: absolute;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  font-size: 18px;
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+  z-index: 2;
+  opacity: 0.5;
+}
+.focus-action:active { background: var(--navy-light); color: var(--gold-warm); opacity: 1; }
+#focus-decrement { left: 20px; }
+#focus-reset-btn { right: 20px; bottom: calc(84px + env(safe-area-inset-bottom)); }
+
+/* ═══════════════════════════════════════════════
+   INSIGHTS PAGE
+═══════════════════════════════════════════════ */
+.insight-card {
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex; gap: 14px;
+}
+.insight-icon { font-size: 24px; flex-shrink: 0; }
+.insight-text h4 { font-family: var(--font-display); font-size: 13px; color: var(--gold-warm); letter-spacing: 0.04em; margin-bottom: 4px; }
+.insight-text p { font-size: 13px; color: var(--text-sec); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════
+   MODAL / BOTTOM SHEET
+═══════════════════════════════════════════════ */
+#modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 300;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+  display: flex; align-items: flex-end;
+}
+#modal-overlay.open { opacity: 1; pointer-events: all; }
+#modal-sheet {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--navy-mid);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--navy-border);
+  padding: 0 0 env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+#modal-overlay.open #modal-sheet { transform: translateY(0); }
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--navy-border);
+  border-radius: 2px;
+  margin: 14px auto 0;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--navy-border);
+}
+.modal-header h3 { font-family: var(--font-display); font-size: 16px; color: var(--gold-warm); letter-spacing: 0.06em; }
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; letter-spacing: 0.08em; color: var(--text-muted); font-family: var(--font-display); text-transform: uppercase; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-footer {
+  display: flex; gap: 10px;
+  padding: 0 20px 20px;
+}
+.btn-primary {
+  flex: 1; padding: 14px;
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold-warm));
+  border-radius: var(--radius-btn);
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--navy-deepest);
+  transition: all var(--transition);
+}
+.btn-primary:active { opacity: 0.85; transform: scale(0.98); }
+.btn-secondary {
+  flex: 1; padding: 14px;
+  background: var(--navy-light);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-btn);
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--text-sec);
+  transition: all var(--transition);
+}
+.btn-secondary:active { background: var(--navy-border); }
+.btn-danger {
+  flex: 1; padding: 14px;
+  background: rgba(224,80,80,0.15);
+  border: 1px solid rgba(224,80,80,0.4);
+  border-radius: var(--radius-btn);
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--danger);
+  transition: all var(--transition);
+}
+.btn-danger:active { background: rgba(224,80,80,0.25); }
+
+/* Color picker grid */
+.color-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.color-swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all var(--transition);
+}
+.color-swatch.selected { border-color: var(--white); transform: scale(1.15); }
+.emoji-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+.emoji-opt {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  background: var(--navy-light);
+  border: 1px solid var(--navy-border);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.emoji-opt.selected { border-color: var(--gold-soft); background: var(--gold-glow2); }
+
+/* ═══════════════════════════════════════════════
+   DAILY REVIEW OVERLAY
+═══════════════════════════════════════════════ */
+#review-overlay {
+  position: fixed; inset: 0;
+  background: var(--navy-deepest);
+  z-index: 160;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#review-overlay.open { display: flex; }
+.review-content {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; padding: 40px 24px 40px;
+  gap: 24px; max-width: 480px; margin: 0 auto; width: 100%;
+}
+.review-title {
+  font-family: var(--font-display);
+  font-size: 22px; color: var(--gold-warm);
+  letter-spacing: 0.1em; text-align: center;
+}
+.review-date { font-size: 13px; color: var(--text-muted); }
+.review-summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; width: 100%;
+}
+.review-stat {
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  padding: 16px 14px;
+  text-align: center;
+}
+.review-stat .rv { font-family: var(--font-display); font-size: 26px; color: var(--gold-warm); }
+.review-stat .rl { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.review-cat-list { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.review-cat-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-btn);
+}
+.review-cat-row.done { border-color: var(--green-done); }
+.review-cat-name { font-size: 14px; color: var(--text-primary); }
+.review-cat-status { font-size: 12px; }
+.review-cat-status.done { color: var(--green-done); }
+.review-cat-status.partial { color: var(--gold-warm); }
+.review-motivational {
+  font-family: var(--font-arabic); font-size: 22px;
+  direction: rtl; color: var(--gold-warm);
+  text-align: center; padding: 10px;
+  border-top: 1px solid var(--navy-border);
+  width: 100%;
+}
+#close-review {
+  padding: 14px 40px;
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold-warm));
+  border-radius: var(--radius-btn);
+  font-family: var(--font-display); font-size: 15px;
+  letter-spacing: 0.06em; color: var(--navy-deepest);
+  font-weight: 600; transition: all var(--transition);
+}
+#close-review:active { opacity: 0.85; }
+
+/* ═══════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--navy-light);
+  border: 1px solid var(--navy-border);
+  border-radius: 30px;
+  padding: 10px 20px;
+  font-size: 13px; color: var(--text-primary);
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  z-index: 400;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ═══════════════════════════════════════════════
+   BACKUP PAGE
+═══════════════════════════════════════════════ */
+.backup-card {
+  background: var(--navy-surface);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-card);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.backup-card h3 { font-family: var(--font-display); font-size: 14px; color: var(--gold-warm); letter-spacing: 0.06em; }
+.backup-card p { font-size: 13px; color: var(--text-sec); line-height: 1.5; }
+.backup-btn {
+  width: 100%; padding: 13px;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-display);
+  font-size: 14px; letter-spacing: 0.06em;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all var(--transition);
+}
+.backup-btn.export {
+  background: var(--gold-glow2);
+  border: 1px solid var(--gold-muted);
+  color: var(--gold-warm);
+}
+.backup-btn.import {
+  background: var(--navy-light);
+  border: 1px solid var(--navy-border);
+  color: var(--text-sec);
+}
+.backup-btn:active { opacity: 0.8; }
+#import-file { display: none; }
+
+/* ═══════════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════════ */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 40px 20px; text-align: center;
+}
+.empty-state .empty-icon { font-size: 48px; opacity: 0.4; }
+.empty-state h3 { font-family: var(--font-display); font-size: 16px; color: var(--text-sec); }
+.empty-state p { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════
+   ANIMATE IN
+═══════════════════════════════════════════════ */
+.page.active .zikr-card,
+.page.active .category-card,
+.page.active .stat-card,
+.page.active .insight-card {
+  animation: fadeUp 0.3s ease both;
+}
+.page.active .zikr-card:nth-child(2) { animation-delay: 0.05s; }
+.page.active .zikr-card:nth-child(3) { animation-delay: 0.1s; }
+.page.active .zikr-card:nth-child(4) { animation-delay: 0.15s; }
+.page.active .zikr-card:nth-child(5) { animation-delay: 0.2s; }
+.page.active .category-card:nth-child(2) { animation-delay: 0.04s; }
+.page.active .category-card:nth-child(3) { animation-delay: 0.08s; }
+.page.active .category-card:nth-child(4) { animation-delay: 0.12s; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════
+   SCROLLBAR NICE
+═══════════════════════════════════════════════ */
+#modal-sheet::-webkit-scrollbar { display: none; }
+#review-overlay::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <button id="menu-btn" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div id="topbar-title">TASBIH</div>
+    <div style="width:38px"></div>
+  </div>
+
+  <!-- PAGES -->
+  <div id="pages">
+    <!-- HOME PAGE -->
+    <div class="page active" id="page-home">
+      <div class="daily-banner">
+        <div class="daily-banner-left">
+          <h3>Daily Progress</h3>
+          <p id="daily-banner-sub">Loading...</p>
+        </div>
+        <div class="daily-progress-ring">
+          <svg width="54" height="54" viewBox="0 0 54 54">
+            <circle class="ring-bg" cx="27" cy="27" r="22"/>
+            <circle class="ring-fill" id="daily-ring" cx="27" cy="27" r="22"
+              stroke-dasharray="138.2" stroke-dashoffset="138.2"/>
+          </svg>
+          <div class="ring-text" id="daily-pct">0%</div>
+        </div>
+      </div>
+      <div class="section-label">Categories</div>
+      <div id="categories-list"></div>
+      <button class="bulk-reset-btn" id="bulk-reset-btn">
+        <span>↺</span> Reset All Counts
+      </button>
+    </div>
+
+    <!-- ZIKR LIST PAGE -->
+    <div class="page" id="page-zikr">
+      <div class="zikr-page-header">
+        <button class="back-btn" id="back-to-home">‹</button>
+        <div>
+          <div class="zikr-page-title" id="zikr-page-category-name">Category</div>
+        </div>
+      </div>
+      <div id="zikr-list"></div>
+    </div>
+
+    <!-- GOALS PAGE -->
+    <div class="page" id="page-goals">
+      <div class="section-label">Today's Overview</div>
+      <div class="goals-stat-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="goals-completed-today">0</div>
+          <div class="stat-lbl">Completed Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="goals-total-today">0</div>
+          <div class="stat-lbl">Total Azkar</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="goals-lifetime">0</div>
+          <div class="stat-lbl">Lifetime Counts</div>
+        </div>
+      </div>
+      <div class="section-label">Milestones</div>
+      <div class="milestone-list" id="milestone-list"></div>
+    </div>
+
+    <!-- INSIGHTS PAGE -->
+    <div class="page" id="page-insights">
+      <div class="section-label">Smart Insights</div>
+      <div id="insights-list"></div>
+    </div>
+
+    <!-- MANAGE PAGE -->
+    <div class="page" id="page-manage">
+      <div class="manage-section-header">
+        <h3>Categories & Azkar</h3>
+        <button class="add-btn" id="add-cat-btn">+ Category</button>
+      </div>
+      <div id="manage-list"></div>
+    </div>
+
+    <!-- BACKUP PAGE -->
+    <div class="page" id="page-backup">
+      <div class="backup-card" style="border-color:var(--gold-muted);background:linear-gradient(135deg,var(--gold-glow2),transparent);">
+        <h3>How Data is Saved</h3>
+        <p>Your azkar, counts, history and stats are <strong style="color:var(--gold-warm)">automatically saved to your browser's local storage</strong> after every tap. No internet needed. Data persists between sessions on the same browser/device.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">⚠ Clearing browser data or switching browsers will erase it. Use JSON backup below to protect your data.</p>
+      </div>
+      <div class="backup-card">
+        <h3>Export Backup</h3>
+        <p>Download a full JSON snapshot of all your azkar, counts, history, and statistics.</p>
+        <button class="backup-btn export" id="export-btn">⬇ Download JSON Backup</button>
+      </div>
+      <div class="backup-card">
+        <h3>Import / Restore</h3>
+        <p>Restore from a previously exported JSON backup file. This will overwrite your current data.</p>
+        <button class="backup-btn import" id="import-btn">⬆ Import JSON File</button>
+        <input type="file" id="import-file" accept=".json"/>
+      </div>
+      <div class="backup-card">
+        <h3>Auto-Backup</h3>
+        <p id="last-backup-time">Last backup: Never</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">A JSON backup is automatically created at each midnight rollover. Download it here.</p>
+        <button class="backup-btn export" id="download-auto-btn">⬇ Download Latest Auto-Backup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar-overlay"></div>
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h2>TASBIH</h2>
+    <p>Your spiritual companion</p>
+  </div>
+  <nav id="sidebar-nav">
+    <div class="nav-item active" data-page="home">
+      <span class="nav-icon">🕌</span>
+      <span class="nav-label">Daily Azkar</span>
+    </div>
+    <div class="nav-item" data-page="goals">
+      <span class="nav-icon">🎯</span>
+      <span class="nav-label">Goals & Stats</span>
+    </div>
+    <div class="nav-item" data-page="insights">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Insights</span>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" data-page="manage">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Manage Azkar</span>
+    </div>
+    <div class="nav-item" data-page="backup">
+      <span class="nav-icon">💾</span>
+      <span class="nav-label">Backup & Restore</span>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" id="review-btn-nav">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Daily Review</span>
+    </div>
+  </nav>
+  <div id="sidebar-footer">بسم الله الرحمن الرحيم</div>
+</div>
+
+<!-- CELEBRATION OVERLAY -->
+<div id="particle-container"></div>
+<div id="celebration-overlay">
+  <div id="celebration-badge">
+    <span class="cel-arabic">ما شاء الله</span>
+    <div class="cel-sub" id="cel-sub-text">Target Complete</div>
+  </div>
+</div>
+
+<!-- FOCUS MODE -->
+<div id="focus-overlay">
+  <button id="focus-close">✕</button>
+  <button id="focus-nav-left">‹</button>
+  <button id="focus-nav-right">›</button>
+  <div id="focus-content">
+    <div id="focus-category">Category</div>
+    <div id="focus-arabic">—</div>
+    <div id="focus-count">0</div>
+    <div id="focus-targets"></div>
+    <div id="focus-dots" style="margin-top:4px;"></div>
+    <div id="focus-hint" style="font-size:11px;letter-spacing:0.1em;color:var(--text-muted);font-family:var(--font-display);margin-top:8px;">TAP ANYWHERE TO COUNT · SWIPE TO NAVIGATE</div>
+  </div>
+  <button class="focus-action" id="focus-decrement" title="Undo">−</button>
+  <button class="focus-action" id="focus-reset-btn" title="Reset">↺</button>
+</div>
+
+<!-- DAILY REVIEW OVERLAY -->
+<div id="review-overlay">
+  <div class="review-content">
+    <div class="review-title">Daily Review</div>
+    <div class="review-date" id="review-date"></div>
+    <div class="review-summary-grid" id="review-summary"></div>
+    <div class="section-label" style="width:100%">Category Completion</div>
+    <div class="review-cat-list" id="review-cat-list"></div>
+    <div class="review-motivational" id="review-motivational"></div>
+    <button id="close-review">Continue ›</button>
+  </div>
+</div>
+
+<!-- MODAL SHEET -->
+<div id="modal-overlay">
+  <div id="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="modal-title">Add</h3>
+      <button id="modal-close" style="font-size:20px; color:var(--text-muted)">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA LAYER
+═══════════════════════════════════════════════════════ */
+const STORAGE_KEY = 'tasbih_v1';
+const TODAY = () => {
+  const d = new Date();
+  const yy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+};
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return getDefaultData();
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+function getDefaultData() {
+  return {
+    categories: [],
+    milestones: [],
+    stats: { lifetimeCounts: 0 },
+    lastAutoBackup: null
+  };
+}
+
+let state = loadData();
+
+function doAutoBackup() {
+  state.lastAutoBackup = { date: TODAY(), data: JSON.stringify(state) };
+}
+
+function isCategoryComplete(cat) {
+  return cat.azkar.length > 0 && cat.azkar.every(z => z.count >= z.intendedCount);
+}
+
+function isZikrIntendedDone(z) { return z.count >= z.intendedCount; }
+function isZikrGoalDone(z) { return z.goalCount != null && z.count >= z.goalCount; }
+function hasGoal(z) { return z.goalCount != null && z.goalCount > 0; }
+
+/* ═══════════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════════ */
+let currentPage = 'home';
+let currentCategoryIndex = null;
+let focusZikrIndex = 0;
+let focusCategoryIndex = null;
+
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.page === page);
+  });
+  currentPage = page;
+  closeSidebar();
+  renderPage(page);
+}
+
+function renderPage(page) {
+  if (page === 'home') renderHome();
+  else if (page === 'zikr') renderZikrList();
+  else if (page === 'goals') renderGoals();
+  else if (page === 'insights') renderInsights();
+  else if (page === 'manage') renderManage();
+  else if (page === 'backup') renderBackup();
+  updateTopBar();
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════════════ */
+function updateTopBar() {
+  // no-op: streak display removed
+}
+
+/* ═══════════════════════════════════════════════════════
+   HOME RENDER
+═══════════════════════════════════════════════════════ */
+function renderHome() {
+  const list = document.getElementById('categories-list');
+  list.innerHTML = '';
+
+  const totalZikr = state.categories.reduce((a,c) => a + c.azkar.length, 0);
+  const completedZikr = state.categories.reduce((a,c) => a + c.azkar.filter(z => isZikrIntendedDone(z)).length, 0);
+  const pct = totalZikr ? Math.round((completedZikr / totalZikr) * 100) : 0;
+  document.getElementById('daily-pct').textContent = pct + '%';
+  document.getElementById('daily-banner-sub').textContent =
+    `${completedZikr} of ${totalZikr} azkar completed`;
+  const circ = 138.2;
+  document.getElementById('daily-ring').style.strokeDashoffset = circ - (circ * pct / 100);
+
+  if (state.categories.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🕌</div>
+      <h3>No categories yet</h3>
+      <p>Go to Manage Azkar to add your first category and azkar.</p>
+    </div>`;
+    return;
+  }
+
+  state.categories.forEach((cat, catIdx) => {
+    const total = cat.azkar.length;
+    const done = cat.azkar.filter(z => isZikrIntendedDone(z)).length;
+    const goalDone = cat.azkar.filter(z => isZikrGoalDone(z)).length;
+    const catDone = isCategoryComplete(cat);
+    const progPct = total ? (done / total) * 100 : 0;
+
+    const card = document.createElement('div');
+    card.className = 'category-card' + (catDone ? ' completed' : '');
+
+    let badgeClass = done === 0 ? 'empty' : catDone ? 'done' : 'partial';
+    let badgeText = catDone ? '✓ Complete' : done === 0 ? `0/${total}` : `${done}/${total}`;
+
+    card.innerHTML = `
+      <div class="cat-header">
+        <div class="cat-icon" style="background:${cat.color}22; color:${cat.color};">${cat.icon}</div>
+        <div class="cat-info">
+          <h3>${esc(cat.name)}</h3>
+          <p>${total} azkar${goalDone > 0 ? ` · ${goalDone} reached goal` : ''}</p>
+        </div>
+        <span class="cat-badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="cat-progress-bar">
+        <div class="cat-progress-fill${catDone?' done':''}" style="width:${progPct}%"></div>
+      </div>`;
+
+    card.addEventListener('click', () => openCategory(catIdx));
+
+    // Long-press category card → Focus Mode for that category
+    let catPressTimer;
+    card.addEventListener('touchstart', () => {
+      catPressTimer = setTimeout(() => { openFocusMode(catIdx, 0); }, 600);
+    }, {passive:true});
+    card.addEventListener('touchend', () => clearTimeout(catPressTimer));
+    card.addEventListener('touchmove', () => clearTimeout(catPressTimer));
+    // Desktop: right-click → focus mode
+    card.addEventListener('contextmenu', e => { e.preventDefault(); openFocusMode(catIdx, 0); });
+
+    list.appendChild(card);
+  });
+}
+
+function openCategory(catIdx) {
+  currentCategoryIndex = catIdx;
+  navigateTo('zikr');
+}
+
+/* ═══════════════════════════════════════════════════════
+   ZIKR LIST RENDER
+═══════════════════════════════════════════════════════ */
+function renderZikrList() {
+  if (currentCategoryIndex === null) return;
+  const cat = state.categories[currentCategoryIndex];
+  document.getElementById('zikr-page-category-name').textContent = cat.name;
+  const list = document.getElementById('zikr-list');
+  list.innerHTML = '';
+
+  if (cat.azkar.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📿</div>
+      <h3>No azkar in this category</h3>
+      <p>Add azkar from the Manage page.</p>
+    </div>`;
+    return;
+  }
+
+  cat.azkar.forEach((z, zIdx) => {
+    list.appendChild(buildZikrCard(z, currentCategoryIndex, zIdx));
+  });
+}
+
+function buildZikrCard(z, catIdx, zIdx) {
+  const intDone = isZikrIntendedDone(z);
+  const goalDone = isZikrGoalDone(z);
+  const card = document.createElement('div');
+  card.className = 'zikr-card' + (goalDone ? ' completed-goal' : intDone ? ' completed-intended' : '');
+  card.id = `zikr-card-${catIdx}-${zIdx}`;
+
+  const progToInt = Math.min(100, (z.count / z.intendedCount) * 100);
+  const progressWidth = goalDone ? 100 : progToInt;
+  const fillClass = goalDone ? 'goal-done' : intDone ? 'intended-done' : '';
+  const statusText = goalDone ? '🌟 Goal Reached' : intDone ? '✓ Target Complete' : `${z.count} / ${z.intendedCount}`;
+  const statusClass = goalDone ? 'goal-done' : intDone ? 'intended-done' : '';
+
+  card.innerHTML = `
+    <div class="zikr-tap-area">
+      <div class="zikr-arabic">${esc(z.arabic)}</div>
+      ${z.transliteration ? `<div class="zikr-transliteration">${esc(z.transliteration)}</div>` : ''}
+      <div class="zikr-counter-row">
+        <div class="zikr-count-display" id="count-${catIdx}-${zIdx}">${z.count}</div>
+      </div>
+      <div class="zikr-targets">
+        <div class="zikr-target"><div class="dot intended"></div><span>Target: ${z.intendedCount}</span></div>
+        ${hasGoal(z) ? `<div class="zikr-target"><div class="dot goal"></div><span>Goal: ${z.goalCount}</span></div>` : ''}
+      </div>
+    </div>
+    <div class="zikr-progress-bar">
+      <div class="zikr-progress-fill ${fillClass}" id="prog-${catIdx}-${zIdx}" style="width:${progressWidth}%"></div>
+    </div>
+    <div class="zikr-actions">
+      <button class="zikr-action-btn decrement" data-cat="${catIdx}" data-z="${zIdx}" title="Undo">−</button>
+      <div class="zikr-status-text ${statusClass}" id="status-${catIdx}-${zIdx}">${statusText}</div>
+      <button class="zikr-action-btn reset" data-cat="${catIdx}" data-z="${zIdx}" title="Reset">↺</button>
+    </div>`;
+
+  // Tap to count
+  card.querySelector('.zikr-tap-area').addEventListener('click', () => incrementZikr(catIdx, zIdx));
+  card.querySelector('.decrement').addEventListener('click', e => { e.stopPropagation(); decrementZikr(catIdx, zIdx); });
+  card.querySelector('.reset').addEventListener('click', e => { e.stopPropagation(); resetZikr(catIdx, zIdx); });
+
+  return card;
+}
+
+/* ═══════════════════════════════════════════════════════
+   COUNT LOGIC
+═══════════════════════════════════════════════════════ */
+function incrementZikr(catIdx, zIdx) {
+  const z = state.categories[catIdx].azkar[zIdx];
+  const prevIntDone = isZikrIntendedDone(z);
+  const prevGoalDone = isZikrGoalDone(z);
+  z.count++;
+  state.stats.lifetimeCounts = (state.stats.lifetimeCounts || 0) + 1;
+  saveData();
+  updateZikrCardUI(catIdx, zIdx);
+
+  const nowIntDone = isZikrIntendedDone(z);
+  const nowGoalDone = isZikrGoalDone(z);
+
+  if (nowGoalDone && !prevGoalDone) {
+    triggerCelebration('goal');
+  } else if (nowIntDone && !prevIntDone) {
+    triggerCelebration('intended');
+    checkCategoryComplete(catIdx);
+  }
+
+  updateHomeStats();
+}
+
+function decrementZikr(catIdx, zIdx) {
+  const z = state.categories[catIdx].azkar[zIdx];
+  if (z.count > 0) { z.count--; saveData(); updateZikrCardUI(catIdx, zIdx); updateHomeStats(); }
+}
+
+function resetZikr(catIdx, zIdx) {
+  state.categories[catIdx].azkar[zIdx].count = 0;
+  saveData();
+  updateZikrCardUI(catIdx, zIdx);
+  updateHomeStats();
+  showToast('Count reset');
+}
+
+function updateZikrCardUI(catIdx, zIdx) {
+  const z = state.categories[catIdx].azkar[zIdx];
+  const intDone = isZikrIntendedDone(z);
+  const goalDone = isZikrGoalDone(z);
+
+  const card = document.getElementById(`zikr-card-${catIdx}-${zIdx}`);
+  if (!card) return;
+
+  card.className = 'zikr-card' + (goalDone ? ' completed-goal' : intDone ? ' completed-intended' : '');
+
+  const countEl = document.getElementById(`count-${catIdx}-${zIdx}`);
+  if (countEl) { countEl.textContent = z.count; countEl.classList.remove('pulse'); void countEl.offsetWidth; countEl.classList.add('pulse'); }
+
+  const prog = document.getElementById(`prog-${catIdx}-${zIdx}`);
+  if (prog) {
+    const progPct = goalDone ? 100 : Math.min(100, (z.count / z.intendedCount) * 100);
+    prog.style.width = progPct + '%';
+    prog.className = 'zikr-progress-fill' + (goalDone ? ' goal-done' : intDone ? ' intended-done' : '');
+  }
+
+  const status = document.getElementById(`status-${catIdx}-${zIdx}`);
+  if (status) {
+    status.textContent = goalDone ? '🌟 Goal Reached' : intDone ? '✓ Target Complete' : `${z.count} / ${z.intendedCount}`;
+    status.className = 'zikr-status-text' + (goalDone ? ' goal-done' : intDone ? ' intended-done' : '');
+  }
+}
+
+function updateHomeStats() {
+  if (currentPage === 'home') renderHome();
+}
+
+function checkCategoryComplete(catIdx) {
+  // Streak tracking removed — kept as a hook in case category-completion
+  // logic is needed here in the future.
+}
+
+/* ═══════════════════════════════════════════════════════
+   CELEBRATION
+═══════════════════════════════════════════════════════ */
+const motivationalPhrases = [
+  'سبحان الله وبحمده', 'الحمد لله رب العالمين',
+  'اللهم صل على محمد', 'بارك الله فيك',
+  'جزاك الله خيراً'
+];
+
+function triggerCelebration(level) {
+  const overlay = document.getElementById('celebration-overlay');
+  const badge = document.getElementById('celebration-badge');
+  const sub = document.getElementById('cel-sub-text');
+
+  if (level === 'goal') {
+    badge.className = 'goal-level';
+    badge.querySelector('.cel-arabic').textContent = 'سبحان الله';
+    sub.textContent = '🌟 Goal Reached — Elite Complete';
+    spawnParticles(30, true);
+  } else {
+    badge.className = '';
+    badge.querySelector('.cel-arabic').textContent = 'ما شاء الله';
+    sub.textContent = 'Target Complete';
+    spawnParticles(12, false);
+  }
+
+  overlay.classList.add('show');
+  setTimeout(() => overlay.classList.remove('show'), 2000);
+}
+
+function spawnParticles(count, golden) {
+  const container = document.getElementById('particle-container');
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 8 + 4;
+    const left = Math.random() * 100;
+    const delay = Math.random() * 0.5;
+    const duration = Math.random() * 1.5 + 1;
+    const color = golden
+      ? `hsl(${42 + Math.random()*20}, 90%, ${55 + Math.random()*20}%)`
+      : `hsl(${Math.random()*360}, 70%, 60%)`;
+    p.style.cssText = `width:${size}px;height:${size}px;background:${color};
+      left:${left}%;top:-10px;animation-duration:${duration}s;animation-delay:${delay}s;`;
+    container.appendChild(p);
+    setTimeout(() => p.remove(), (duration + delay + 0.5) * 1000);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOCUS MODE  — category-level, any-screen-tap counts,
+                 swipe left/right to navigate azkar
+═══════════════════════════════════════════════════════ */
+function openFocusMode(catIdx, zIdx) {
+  focusCategoryIndex = catIdx;
+  focusZikrIndex = zIdx || 0;
+  renderFocusMode();
+  document.getElementById('focus-overlay').classList.add('open');
+}
+
+function renderFocusMode() {
+  const cat = state.categories[focusCategoryIndex];
+  if (!cat || !cat.azkar.length) return;
+  const z = cat.azkar[focusZikrIndex];
+  if (!z) return;
+
+  const intDone = isZikrIntendedDone(z);
+  const goalDone = isZikrGoalDone(z);
+
+  document.getElementById('focus-category').textContent =
+    `${cat.icon}  ${cat.name.toUpperCase()}  ·  ${focusZikrIndex + 1} / ${cat.azkar.length}`;
+  document.getElementById('focus-arabic').textContent = z.arabic;
+
+  const fc = document.getElementById('focus-count');
+  fc.textContent = z.count;
+  fc.style.color = goalDone ? 'var(--gold-bright)' : intDone ? 'var(--green-done)' : 'var(--gold-bright)';
+
+  document.getElementById('focus-targets').innerHTML =
+    `<span style="color:var(--green-done)">▸ ${z.intendedCount}</span>
+     ${hasGoal(z) ? `<span style="color:var(--gold-warm)">★ ${z.goalCount}</span>` : ''}`;
+
+  // Progress indicator dots
+  const dotsEl = document.getElementById('focus-dots');
+  if (dotsEl) {
+    dotsEl.innerHTML = cat.azkar.map((_, i) =>
+      `<span style="width:6px;height:6px;border-radius:50%;background:${
+        i === focusZikrIndex ? 'var(--gold-warm)' : 'var(--navy-border)'
+      };display:inline-block;margin:0 3px;transition:background 0.2s;"></span>`
+    ).join('');
+  }
+}
+
+// ── Any tap on the focus overlay counts (except action buttons) ──
+document.getElementById('focus-overlay').addEventListener('click', e => {
+  if (focusCategoryIndex === null) return;
+  // Ignore taps on the control buttons
+  const ignored = ['focus-close','focus-nav-left','focus-nav-right',
+                   'focus-decrement','focus-reset-btn'];
+  if (ignored.includes(e.target.id) || e.target.closest('.focus-action')) return;
+
+  incrementZikr(focusCategoryIndex, focusZikrIndex);
+  const fc = document.getElementById('focus-count');
+  fc.textContent = state.categories[focusCategoryIndex].azkar[focusZikrIndex].count;
+  fc.classList.remove('pulse'); void fc.offsetWidth; fc.classList.add('pulse');
+  renderFocusMode();
+});
+
+// ── Swipe detection ──
+let focusTouchStartX = 0;
+document.getElementById('focus-overlay').addEventListener('touchstart', e => {
+  focusTouchStartX = e.touches[0].clientX;
+}, {passive: true});
+document.getElementById('focus-overlay').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - focusTouchStartX;
+  if (Math.abs(dx) < 50) return; // too small → count tap, not swipe
+  const cat = state.categories[focusCategoryIndex];
+  if (!cat) return;
+  if (dx < 0) { // swipe left → next
+    focusZikrIndex = (focusZikrIndex + 1) % cat.azkar.length;
+  } else {       // swipe right → prev
+    focusZikrIndex = (focusZikrIndex - 1 + cat.azkar.length) % cat.azkar.length;
+  }
+  renderFocusMode();
+}, {passive: true});
+
+document.getElementById('focus-nav-left').addEventListener('click', e => {
+  e.stopPropagation();
+  const cat = state.categories[focusCategoryIndex];
+  if (!cat) return;
+  focusZikrIndex = (focusZikrIndex - 1 + cat.azkar.length) % cat.azkar.length;
+  renderFocusMode();
+});
+
+document.getElementById('focus-nav-right').addEventListener('click', e => {
+  e.stopPropagation();
+  const cat = state.categories[focusCategoryIndex];
+  if (!cat) return;
+  focusZikrIndex = (focusZikrIndex + 1) % cat.azkar.length;
+  renderFocusMode();
+});
+
+document.getElementById('focus-decrement').addEventListener('click', e => {
+  e.stopPropagation();
+  if (focusCategoryIndex === null) return;
+  decrementZikr(focusCategoryIndex, focusZikrIndex);
+  renderFocusMode();
+});
+
+document.getElementById('focus-reset-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  if (focusCategoryIndex === null) return;
+  resetZikr(focusCategoryIndex, focusZikrIndex);
+  renderFocusMode();
+});
+
+document.getElementById('focus-close').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('focus-overlay').classList.remove('open');
+  if (currentPage === 'zikr') renderZikrList();
+});
+
+/* ═══════════════════════════════════════════════════════
+   GOALS RENDER
+═══════════════════════════════════════════════════════ */
+const DEFAULT_MILESTONES = [
+  { id: 'm1', title: 'First Zikr',    desc: 'Complete your first count',      icon: '🌱', type: 'lifetime', threshold: 1 },
+  { id: 'm2', title: 'Hundred',       desc: 'Reach 100 lifetime counts',       icon: '💯', type: 'lifetime', threshold: 100 },
+  { id: 'm3', title: 'Thousand',      desc: 'Reach 1,000 lifetime counts',     icon: '🌙', type: 'lifetime', threshold: 1000 },
+  { id: 'm8', title: 'Ten Thousand',  desc: 'Reach 10,000 lifetime counts',    icon: '🌟', type: 'lifetime', threshold: 10000 },
+];
+
+function getMilestones() {
+  if (!state.milestones || !state.milestones.length) {
+    state.milestones = JSON.parse(JSON.stringify(DEFAULT_MILESTONES));
+    saveData();
+  }
+  return state.milestones;
+}
+
+function isMilestoneEarned(m) {
+  const val = m.type === 'lifetime' ? (state.stats.lifetimeCounts || 0) : 0;
+  return val >= m.threshold;
+}
+
+function renderGoals() {
+  const totalZ = state.categories.reduce((a,c) => a + c.azkar.length, 0);
+  const doneZ  = state.categories.reduce((a,c) => a + c.azkar.filter(z => isZikrIntendedDone(z)).length, 0);
+  document.getElementById('goals-completed-today').textContent = doneZ;
+  document.getElementById('goals-total-today').textContent   = totalZ;
+  document.getElementById('goals-lifetime').textContent      = (state.stats.lifetimeCounts || 0).toLocaleString();
+
+  renderMilestoneList();
+}
+
+function renderMilestoneList() {
+  const milestones = getMilestones();
+  const ml = document.getElementById('milestone-list');
+  ml.innerHTML = '';
+
+  // Header row with Add button
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;';
+  header.innerHTML = `<span style="font-size:12px;color:var(--text-muted);font-family:var(--font-display);letter-spacing:0.08em;">YOUR MILESTONES</span>`;
+  const addMBtn = document.createElement('button');
+  addMBtn.className = 'add-btn';
+  addMBtn.style.cssText = 'font-size:11px;padding:5px 10px;';
+  addMBtn.textContent = '+ Add';
+  addMBtn.addEventListener('click', openAddMilestoneModal);
+  header.appendChild(addMBtn);
+  ml.appendChild(header);
+
+  milestones.forEach((m, idx) => {
+    const earned = isMilestoneEarned(m);
+    const item = document.createElement('div');
+    item.className = 'milestone-item' + (earned ? ' earned' : '');
+    item.innerHTML = `
+      <div class="milestone-icon">${m.icon}</div>
+      <div class="milestone-info" style="flex:1;">
+        <h4>${esc(m.title)}</h4>
+        <p>${esc(m.desc)} <span style="color:var(--text-muted);font-size:10px;">(${m.type}: ${m.threshold})</span></p>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        ${earned ? '<span style="color:var(--gold-warm);font-size:18px;margin-right:4px;">✓</span>' : ''}
+        <button class="icon-btn edit" data-midx="${idx}" title="Edit">✎</button>
+        <button class="icon-btn delete" data-midx="${idx}" title="Delete">✕</button>
+      </div>`;
+    item.querySelector('.icon-btn.edit').addEventListener('click', () => openEditMilestoneModal(idx));
+    item.querySelector('.icon-btn.delete').addEventListener('click', () => confirmDeleteMilestone(idx));
+    ml.appendChild(item);
+  });
+
+  if (!milestones.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = `<div class="empty-icon">🏅</div><h3>No milestones yet</h3><p>Add your first milestone above.</p>`;
+    ml.appendChild(empty);
+  }
+}
+
+/* ─── Milestone modal helpers ─────────────────────────── */
+const MILESTONE_ICONS = ['🌱','💯','🌙','🔥','⚔️','👑','📿','🌟','💎','🕌','🤲','☀️','🌊','🌸','🏆','⭐','🎯','💫','🙏','🌿'];
+
+function milestoneFormHTML(m) {
+  const icons = MILESTONE_ICONS.map(ic =>
+    `<div class="emoji-opt${m && m.icon === ic ? ' selected':''}" data-icon="${ic}">${ic}</div>`
+  ).join('');
+  return `
+    <div class="form-group">
+      <div class="form-label">Title</div>
+      <input type="text" id="m-ms-title" value="${m ? esc(m.title) : ''}" placeholder="e.g. Week Warrior" maxlength="40"/>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Description</div>
+      <input type="text" id="m-ms-desc" value="${m ? esc(m.desc) : ''}" placeholder="What does this celebrate?" maxlength="80"/>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Icon</div>
+      <div class="emoji-grid">${icons}</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">Type</div>
+        <select id="m-ms-type">
+          <option value="lifetime"${m && m.type==='lifetime'?' selected':''}>Lifetime counts</option>
+          <option value="streak"${m && m.type==='streak'?' selected':''}>Best streak (days)</option>
+          <option value="days"${m && m.type==='days'?' selected':''}>Days tracked</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Threshold</div>
+        <input type="number" id="m-ms-threshold" min="1" value="${m ? m.threshold : 100}" placeholder="100"/>
+      </div>
+    </div>`;
+}
+
+function readMilestoneForm(existingId) {
+  const title     = document.getElementById('m-ms-title').value.trim();
+  const desc      = document.getElementById('m-ms-desc').value.trim();
+  const type      = document.getElementById('m-ms-type').value;
+  const threshold = parseInt(document.getElementById('m-ms-threshold').value) || 0;
+  const selIcon   = document.querySelector('.emoji-opt.selected');
+  const icon      = selIcon ? selIcon.dataset.icon : '⭐';
+  if (!title) { showToast('Enter a title'); return null; }
+  if (threshold < 1) { showToast('Threshold must be ≥ 1'); return null; }
+  return { id: existingId || ('m_' + Date.now()), title, desc, icon, type, threshold };
+}
+
+function openAddMilestoneModal() {
+  openModal('Add Milestone', milestoneFormHTML(null), [
+    { label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+    { label: 'Add', cls: 'btn-primary', action: () => {
+      const m = readMilestoneForm(null);
+      if (!m) return;
+      getMilestones().push(m);
+      saveData(); closeModal(); renderMilestoneList(); showToast('Milestone added');
+    }}]);
+  attachIconListenerOnly();
+}
+
+function openEditMilestoneModal(idx) {
+  const m = getMilestones()[idx];
+  openModal('Edit Milestone', milestoneFormHTML(m), [
+    { label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+    { label: 'Save', cls: 'btn-primary', action: () => {
+      const updated = readMilestoneForm(m.id);
+      if (!updated) return;
+      state.milestones[idx] = updated;
+      saveData(); closeModal(); renderMilestoneList(); showToast('Milestone updated');
+    }}]);
+  attachIconListenerOnly();
+}
+
+function confirmDeleteMilestone(idx) {
+  const m = getMilestones()[idx];
+  openModal('Delete Milestone', `
+    <p style="color:var(--text-sec);font-size:14px;line-height:1.6;">
+      Delete milestone <strong style="color:var(--gold-warm)">${esc(m.title)}</strong>?
+    </p>`,
+    [{ label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+     { label: 'Delete', cls: 'btn-danger', action: () => {
+       state.milestones.splice(idx, 1);
+       saveData(); closeModal(); renderMilestoneList(); showToast('Milestone deleted');
+     }}]);
+}
+
+function attachIconListenerOnly() {
+  // Attach only emoji-opt listeners (no color swatches in milestone form)
+  setTimeout(() => {
+    document.querySelectorAll('#modal-body .emoji-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('#modal-body .emoji-opt').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+  }, 50);
+}
+
+/* ═══════════════════════════════════════════════════════
+   INSIGHTS RENDER
+═══════════════════════════════════════════════════════ */
+function renderInsights() {
+  const insights = generateInsights();
+  const il = document.getElementById('insights-list');
+  if (insights.length === 0) {
+    il.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div>
+      <h3>Not enough data yet</h3><p>Keep counting daily and insights will appear here.</p></div>`;
+  } else {
+    il.innerHTML = insights.map(i => `
+      <div class="insight-card">
+        <div class="insight-icon">${i.icon}</div>
+        <div class="insight-text">
+          <h4>${esc(i.title)}</h4>
+          <p>${esc(i.text)}</p>
+        </div>
+      </div>`).join('');
+  }
+}
+
+function generateInsights() {
+  const insights = [];
+  const totalZ = state.categories.reduce((a,c) => a + c.azkar.length, 0);
+  const doneZ = state.categories.reduce((a,c) => a + c.azkar.filter(z => isZikrIntendedDone(z)).length, 0);
+  const lifetime = state.stats.lifetimeCounts || 0;
+
+  if (totalZ > 0) {
+    const pct = Math.round((doneZ / totalZ) * 100);
+    insights.push({ icon: '🎯', title: "Today's Completion", text: `You have completed ${pct}% of today's azkar targets.` });
+  }
+  const goalCounts = state.categories.reduce((a,c) => a + c.azkar.filter(z => isZikrGoalDone(z)).length, 0);
+  if (goalCounts > 0) insights.push({ icon: '🌟', title: 'Goals Reached', text: `You have reached the goal count for ${goalCounts} azkar today. Exceptional dedication.` });
+  if (lifetime >= 1000) insights.push({ icon: '💫', title: 'Thousand Club', text: `You have made over ${lifetime.toLocaleString()} total remembrances. الله أكبر.` });
+
+  return insights;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MANAGE RENDER
+═══════════════════════════════════════════════════════ */
+function renderManage() {
+  const ml = document.getElementById('manage-list');
+  ml.innerHTML = '';
+
+  if (state.categories.length === 0) {
+    ml.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚙️</div>
+      <h3>No categories yet</h3>
+      <p>Add a category to get started.</p>
+    </div>`;
+    return;
+  }
+
+  state.categories.forEach((cat, catIdx) => {
+    const card = document.createElement('div');
+    card.className = 'manage-category-card';
+    card.innerHTML = `
+      <div class="manage-cat-header">
+        <div class="cat-icon-sm" style="color:${cat.color}">${cat.icon}</div>
+        <h4>${esc(cat.name)}</h4>
+        <button class="icon-btn edit" data-action="edit-cat" data-idx="${catIdx}" title="Edit">✎</button>
+        <button class="icon-btn delete" data-action="del-cat" data-idx="${catIdx}" title="Delete">✕</button>
+      </div>
+      <div class="cat-azkar-items" id="cat-items-${catIdx}">
+        ${cat.azkar.length === 0 ? `<div style="padding:12px 14px; font-size:13px; color:var(--text-muted)">No azkar yet.</div>` :
+          cat.azkar.map((z, zIdx) => `
+            <div class="manage-zikr-item" data-cat="${catIdx}" data-z="${zIdx}">
+              <div class="drag-handle" title="Drag to reorder">⠿</div>
+              <div class="manage-zikr-info">
+                <div class="arabic-sm">${esc(z.arabic)}</div>
+                <div class="targets-sm">Target: ${z.intendedCount} · Goal: ${z.goalCount != null ? z.goalCount : '—'}</div>
+              </div>
+              <div class="manage-zikr-actions">
+                <button class="icon-btn edit" data-action="edit-zikr" data-cat="${catIdx}" data-z="${zIdx}" title="Edit">✎</button>
+                <button class="icon-btn delete" data-action="del-zikr" data-cat="${catIdx}" data-z="${zIdx}" title="Delete">✕</button>
+              </div>
+            </div>`).join('')}
+        <div style="padding:8px 14px 12px;">
+          <button class="add-btn" data-action="add-zikr" data-cat="${catIdx}" style="font-size:12px; padding:6px 12px;">+ Add Zikr</button>
+        </div>
+      </div>`;
+
+    card.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        handleManageAction(btn.dataset);
+      });
+    });
+    ml.appendChild(card);
+  });
+
+  // Wire up drag-to-reorder on all zikr items
+  setupZikrDrag();
+}
+
+function handleManageAction(ds) {
+  if (ds.action === 'edit-cat') openEditCategoryModal(+ds.idx);
+  else if (ds.action === 'del-cat') confirmDeleteCategory(+ds.idx);
+  else if (ds.action === 'add-zikr') openAddZikrModal(+ds.cat);
+  else if (ds.action === 'edit-zikr') openEditZikrModal(+ds.cat, +ds.z);
+  else if (ds.action === 'del-zikr') confirmDeleteZikr(+ds.cat, +ds.z);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DRAG-TO-REORDER AZKAR (touch + mouse)
+═══════════════════════════════════════════════════════ */
+function setupZikrDrag() {
+  let dragItem = null;   // the DOM element being dragged
+  let dragCat  = null;   // category index (int)
+  let dragFrom = null;   // original zikr index (int)
+  let overItem = null;   // current hover target element
+
+  function getDragItem(el) {
+    // Walk up from the handle to find the .manage-zikr-item
+    while (el && !el.classList.contains('manage-zikr-item')) el = el.parentElement;
+    return el;
+  }
+
+  function getItemIndex(el) { return +el.dataset.z; }
+  function getItemCat(el)   { return +el.dataset.cat; }
+
+  function startDrag(el) {
+    dragItem = el;
+    dragCat  = getItemCat(el);
+    dragFrom = getItemIndex(el);
+    el.classList.add('dragging');
+  }
+
+  function clearDragState() {
+    if (dragItem) dragItem.classList.remove('dragging');
+    if (overItem) overItem.classList.remove('drag-over');
+    dragItem = dragFrom = dragCat = overItem = null;
+  }
+
+  function commitDrop(toIdx) {
+    if (dragItem === null || toIdx === dragFrom) { clearDragState(); return; }
+    const azkar = state.categories[dragCat].azkar;
+    const [moved] = azkar.splice(dragFrom, 1);
+    azkar.splice(toIdx, 0, moved);
+    saveData();
+    clearDragState();
+    renderManage();   // re-render (also re-wires drag)
+  }
+
+  // ── MOUSE ──────────────────────────────────────────────
+  document.querySelectorAll('.manage-zikr-item .drag-handle').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      startDrag(getDragItem(handle));
+    });
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragItem) return;
+    const target = getDragItem(document.elementFromPoint(e.clientX, e.clientY));
+    if (!target || target === dragItem || getItemCat(target) !== dragCat) return;
+    if (overItem && overItem !== target) overItem.classList.remove('drag-over');
+    overItem = target;
+    target.classList.add('drag-over');
+  }, { passive: true });
+
+  document.addEventListener('mouseup', e => {
+    if (!dragItem) return;
+    const target = getDragItem(document.elementFromPoint(e.clientX, e.clientY));
+    if (target && target !== dragItem && getItemCat(target) === dragCat) {
+      commitDrop(getItemIndex(target));
+    } else {
+      clearDragState();
+    }
+  });
+
+  // ── TOUCH ──────────────────────────────────────────────
+  document.querySelectorAll('.manage-zikr-item .drag-handle').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      e.preventDefault();
+      startDrag(getDragItem(handle));
+    }, { passive: false });
+  });
+
+  document.addEventListener('touchmove', e => {
+    if (!dragItem) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const target = getDragItem(document.elementFromPoint(t.clientX, t.clientY));
+    if (!target || target === dragItem || getItemCat(target) !== dragCat) return;
+    if (overItem && overItem !== target) overItem.classList.remove('drag-over');
+    overItem = target;
+    target.classList.add('drag-over');
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!dragItem) return;
+    const t = e.changedTouches[0];
+    const target = getDragItem(document.elementFromPoint(t.clientX, t.clientY));
+    if (target && target !== dragItem && getItemCat(target) === dragCat) {
+      commitDrop(getItemIndex(target));
+    } else {
+      clearDragState();
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════════════════ */
+const CAT_COLORS = ['#e8b830','#2ecc71','#3498db','#9b59b6','#e74c3c','#1abc9c','#e67e22','#f39c12'];
+const CAT_ICONS  = ['🕌','🌙','⭐','📿','🌿','☀️','💧','🌸','🏔️','🌊','🔆','🤲'];
+
+function openAddCategoryModal() {
+  let selColor = CAT_COLORS[0], selIcon = CAT_ICONS[0];
+  openModal('Add Category', `
+    <div class="form-group">
+      <div class="form-label">Category Name</div>
+      <input type="text" id="m-cat-name" placeholder="e.g. Morning Azkar" maxlength="50"/>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Icon</div>
+      <div class="emoji-grid">${CAT_ICONS.map((ic,i) =>
+        `<div class="emoji-opt${i===0?' selected':''}" data-icon="${ic}">${ic}</div>`).join('')}</div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Color</div>
+      <div class="color-grid">${CAT_COLORS.map((c,i) =>
+        `<div class="color-swatch${i===0?' selected':''}" data-color="${c}" style="background:${c}"></div>`).join('')}</div>
+    </div>`,
+    [{ label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+     { label: 'Add Category', cls: 'btn-primary', action: () => {
+       const name = document.getElementById('m-cat-name').value.trim();
+       if (!name) return showToast('Enter a category name');
+       state.categories.push({ name, icon: selIcon, color: selColor, azkar: [] });
+       saveData(); closeModal(); renderManage(); showToast('Category added');
+     }}]);
+  attachColorIconListeners(v => selColor = v, v => selIcon = v);
+}
+
+function openEditCategoryModal(catIdx) {
+  const cat = state.categories[catIdx];
+  let selColor = cat.color, selIcon = cat.icon;
+  openModal('Edit Category', `
+    <div class="form-group">
+      <div class="form-label">Category Name</div>
+      <input type="text" id="m-cat-name" value="${esc(cat.name)}" maxlength="50"/>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Icon</div>
+      <div class="emoji-grid">${CAT_ICONS.map(ic =>
+        `<div class="emoji-opt${ic===selIcon?' selected':''}" data-icon="${ic}">${ic}</div>`).join('')}</div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Color</div>
+      <div class="color-grid">${CAT_COLORS.map(c =>
+        `<div class="color-swatch${c===selColor?' selected':''}" data-color="${c}" style="background:${c}"></div>`).join('')}</div>
+    </div>`,
+    [{ label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+     { label: 'Save', cls: 'btn-primary', action: () => {
+       const name = document.getElementById('m-cat-name').value.trim();
+       if (!name) return showToast('Enter a name');
+       state.categories[catIdx].name = name;
+       state.categories[catIdx].color = selColor;
+       state.categories[catIdx].icon = selIcon;
+       saveData(); closeModal(); renderManage(); showToast('Category updated');
+     }}]);
+  attachColorIconListeners(v => selColor = v, v => selIcon = v);
+}
+
+function confirmDeleteCategory(catIdx) {
+  const cat = state.categories[catIdx];
+  openModal('Delete Category', `
+    <p style="color:var(--text-sec); font-size:14px; line-height:1.6;">
+      Delete <strong style="color:var(--gold-warm)">${esc(cat.name)}</strong> and all ${cat.azkar.length} azkar inside? This cannot be undone.
+    </p>`,
+    [{ label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+     { label: 'Delete', cls: 'btn-danger', action: () => {
+       state.categories.splice(catIdx, 1);
+       saveData(); closeModal(); renderManage(); showToast('Category deleted');
+     }}]);
+}
+
+function openAddZikrModal(catIdx) {
+  openModal('Add Zikr', zikrFormHTML(), [
+    { label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+    { label: 'Add', cls: 'btn-primary', action: () => {
+      const data = readZikrForm();
+      if (!data) return;
+      state.categories[catIdx].azkar.push({ ...data, count: 0 });
+      saveData(); closeModal(); renderManage(); showToast('Zikr added');
+    }}]);
+}
+
+function openEditZikrModal(catIdx, zIdx) {
+  const z = state.categories[catIdx].azkar[zIdx];
+  openModal('Edit Zikr', zikrFormHTML(z), [
+    { label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+    { label: 'Save', cls: 'btn-primary', action: () => {
+      const data = readZikrForm();
+      if (!data) return;
+      Object.assign(state.categories[catIdx].azkar[zIdx], data);
+      saveData(); closeModal(); renderManage(); showToast('Zikr updated');
+    }}]);
+}
+
+function confirmDeleteZikr(catIdx, zIdx) {
+  const z = state.categories[catIdx].azkar[zIdx];
+  openModal('Delete Zikr', `
+    <p style="color:var(--text-sec); font-size:14px; line-height:1.6;">
+      Delete <strong style="color:var(--gold-warm); font-family:var(--font-arabic); font-size:18px;">${esc(z.arabic)}</strong>?
+    </p>`,
+    [{ label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+     { label: 'Delete', cls: 'btn-danger', action: () => {
+       state.categories[catIdx].azkar.splice(zIdx, 1);
+       saveData(); closeModal(); renderManage(); showToast('Zikr deleted');
+     }}]);
+}
+
+function zikrFormHTML(z) {
+  const hasGoal = z && z.goalCount && z.goalCount !== z.intendedCount;
+  return `
+    <div class="form-group">
+      <div class="form-label">Arabic Text</div>
+      <textarea id="m-z-arabic" rows="2" placeholder="سبحان الله" style="direction:rtl; font-family:var(--font-arabic); font-size:20px;">${z ? esc(z.arabic) : ''}</textarea>
+    </div>
+    <div class="form-group">
+      <div class="form-label">Transliteration (optional)</div>
+      <input type="text" id="m-z-translit" placeholder="SubhanAllah" value="${z ? esc(z.transliteration||'') : ''}"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">Target Count</div>
+        <input type="number" id="m-z-intended" min="1" max="10000" value="${z ? z.intendedCount : 33}" placeholder="33"/>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Goal Count <span style="font-size:10px;color:var(--text-muted);font-family:var(--font-body);">(optional)</span></div>
+        <input type="number" id="m-z-goal" min="1" max="10000"
+          value="${hasGoal ? z.goalCount : ''}"
+          placeholder="e.g. 100 — leave blank to skip"/>
+      </div>
+    </div>`;
+}
+
+function readZikrForm() {
+  const arabic = document.getElementById('m-z-arabic').value.trim();
+  const translit = document.getElementById('m-z-translit')?.value.trim() || '';
+  const intended = parseInt(document.getElementById('m-z-intended').value) || 0;
+  const goalRaw = document.getElementById('m-z-goal').value.trim();
+  const goal = goalRaw === '' ? null : parseInt(goalRaw) || 0;
+
+  if (!arabic)    { showToast('Enter Arabic text'); return null; }
+  if (intended < 1) { showToast('Target must be at least 1'); return null; }
+  if (goal !== null && goal < intended) { showToast('Goal must be ≥ Target'); return null; }
+
+  return { arabic, transliteration: translit, intendedCount: intended, goalCount: goal };
+}
+
+function attachColorIconListeners(onColor, onIcon) {
+  document.querySelectorAll('.color-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      onColor(sw.dataset.color);
+    });
+  });
+  document.querySelectorAll('.emoji-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.emoji-opt').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      onIcon(opt.dataset.icon);
+    });
+  });
+}
+
+function openModal(title, bodyHTML, buttons) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHTML;
+  const footer = document.getElementById('modal-footer');
+  footer.innerHTML = '';
+  buttons.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = b.cls;
+    btn.textContent = b.label;
+    btn.addEventListener('click', b.action);
+    footer.appendChild(btn);
+  });
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════════════════
+   DAILY REVIEW
+═══════════════════════════════════════════════════════ */
+function openDailyReview() {
+  closeSidebar();
+  const today = TODAY();
+  document.getElementById('review-date').textContent = formatDate(today);
+
+  const totalZ = state.categories.reduce((a,c) => a + c.azkar.length, 0);
+  const doneZ = state.categories.reduce((a,c) => a + c.azkar.filter(z => isZikrIntendedDone(z)).length, 0);
+  const unfinished = state.categories.reduce((a,c) => a + c.azkar.filter(z => !isZikrIntendedDone(z)).length, 0);
+  const pct = totalZ ? Math.round((doneZ/totalZ)*100) : 0;
+
+  document.getElementById('review-summary').innerHTML = `
+    <div class="review-stat"><div class="rv">${doneZ}</div><div class="rl">Completed</div></div>
+    <div class="review-stat"><div class="rv">${unfinished}</div><div class="rl">Unfinished</div></div>
+    <div class="review-stat"><div class="rv">${pct}%</div><div class="rl">Daily Progress</div></div>
+    <div class="review-stat"><div class="rv">${(state.stats.lifetimeCounts||0).toLocaleString()}</div><div class="rl">Lifetime Counts</div></div>`;
+
+  document.getElementById('review-cat-list').innerHTML = state.categories.map(cat => {
+    const done = isCategoryComplete(cat);
+    const catDoneCount = cat.azkar.filter(z => isZikrIntendedDone(z)).length;
+    return `<div class="review-cat-row ${done?'done':''}">
+      <span class="review-cat-name">${cat.icon} ${esc(cat.name)}</span>
+      <span class="review-cat-status ${done?'done':'partial'}">${done ? '✓ Complete' : `${catDoneCount}/${cat.azkar.length}`}</span>
+    </div>`;
+  }).join('');
+
+  const phrases = ['بارك الله فيك', 'جزاك الله خيراً', 'اللهم تقبل منا', 'سبحان الله وبحمده'];
+  document.getElementById('review-motivational').textContent = phrases[Math.floor(Math.random()*phrases.length)];
+
+  document.getElementById('review-overlay').classList.add('open');
+}
+
+document.getElementById('close-review').addEventListener('click', () => {
+  document.getElementById('review-overlay').classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════════════════
+   BACKUP
+═══════════════════════════════════════════════════════ */
+function renderBackup() {
+  const lb = state.lastAutoBackup;
+  document.getElementById('last-backup-time').textContent =
+    lb ? `Last auto-backup: ${formatDate(lb.date)}` : 'Last backup: Never';
+}
+
+document.getElementById('export-btn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `tasbih-backup-${TODAY()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('Backup downloaded');
+  doAutoBackup(); saveData();
+});
+
+document.getElementById('download-auto-btn').addEventListener('click', () => {
+  if (!state.lastAutoBackup) { showToast('No auto-backup yet'); return; }
+  const blob = new Blob([state.lastAutoBackup.data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `tasbih-auto-${state.lastAutoBackup.date}.json`;
+  a.click(); URL.revokeObjectURL(url);
+});
+
+document.getElementById('import-btn').addEventListener('click', () => {
+  document.getElementById('import-file').click();
+});
+
+document.getElementById('import-file').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.categories) throw new Error('Invalid format');
+      Object.assign(state, imported);
+      saveData();
+      renderPage(currentPage);
+      showToast('Data restored successfully');
+    } catch(err) { showToast('Invalid backup file'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ═══════════════════════════════════════════════════════
+   BULK RESET
+═══════════════════════════════════════════════════════ */
+document.getElementById('bulk-reset-btn').addEventListener('click', () => {
+  openModal('Reset All Counts', `
+    <p style="color:var(--text-sec); font-size:14px; line-height:1.6;">
+      This will reset all zikr counts to 0. This cannot be undone.
+    </p>`,
+    [{ label: 'Cancel', cls: 'btn-secondary', action: closeModal },
+     { label: 'Reset All', cls: 'btn-danger', action: () => {
+       state.categories.forEach(cat => cat.azkar.forEach(z => z.count = 0));
+       saveData(); closeModal(); renderPage(currentPage); showToast('All counts reset');
+     }}]);
+});
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════ */
+document.getElementById('menu-btn').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+});
+document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => navigateTo(item.dataset.page));
+});
+
+document.getElementById('review-btn-nav').addEventListener('click', openDailyReview);
+
+/* ═══════════════════════════════════════════════════════
+   ADD CATEGORY BUTTON
+═══════════════════════════════════════════════════════ */
+document.getElementById('add-cat-btn').addEventListener('click', openAddCategoryModal);
+
+/* ═══════════════════════════════════════════════════════
+   MODAL CLOSE
+═══════════════════════════════════════════════════════ */
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+/* ═══════════════════════════════════════════════════════
+   BACK BUTTON
+═══════════════════════════════════════════════════════ */
+document.getElementById('back-to-home').addEventListener('click', () => navigateTo('home'));
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════ */
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatDate(iso) {
+  try {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  } catch(e) { return iso; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════ */
+// Ensure milestones are initialized
+getMilestones();
+updateTopBar();
+renderHome();
+</script>
+
+<!-- ═══ WORKSPACE BRIDGE ═══════════════════════════════════ -->
+<script>
+window.WS_MODULE_ID    = 'tasbih';
+window.WS_MODULE_LABEL = 'Tasbih';
+
+window.wsExport = function() {
+  return JSON.parse(JSON.stringify(state));
+};
+
+window.wsImport = function(data) {
+  if (!data) return;
+
+  // localStorage is the live source of truth for Tasbih.
+  // wsImport is called every time the hub navigates to this module,
+  // so we must NOT overwrite live state with the hub's potentially
+  // stale snapshot. We only use hub data to seed localStorage when
+  // it is completely empty (first ever use on this device).
+  const localRaw = localStorage.getItem('tasbih_v1');
+  if (!localRaw) {
+    // No local data at all — seed from hub snapshot
+    Object.assign(state, data);
+    saveData();
+  }
+  // Refresh UI now that state is populated
+  try {
+    renderHome();
+    updateTopBar();
+  } catch(e) {}
+};
+</script>
+<script src="workspace-core.js"></script>
+</body>
+</html>
