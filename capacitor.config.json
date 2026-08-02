@@ -8,6 +8,9 @@
   "plugins": {
     "EdgeToEdge": {
       "backgroundColor": "#080c14"
+    },
+    "SystemBars": {
+      "insetsHandling": "disable"
     }
   }
 }
