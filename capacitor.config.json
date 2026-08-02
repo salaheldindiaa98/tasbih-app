@@ -1,7 +1,7 @@
 {
   "appId": "com.salaheldindiaa98.tasbih",
   "appName": "Tasbih",
-  "webDir": ".",
+  "webDir": "www",
   "server": {
     "androidScheme": "https"
   }
